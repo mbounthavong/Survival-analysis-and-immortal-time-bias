@@ -18,4 +18,7 @@ Sylvestre MP, Huszti E, Hanley JA. Do OSCAR winners live longer than less succes
 
 Redelmeier DA, Singh SM. Survival in Academy Award-winning actors and actresses. Ann Intern Med. 2001 May 15;134(10):955-62. doi: 10.7326/0003-4819-134-10-200105150-00009. PMID: 11352696.
 
+# Disclaimers and Disclosures
+This is for educational purposes only.
 
+Any errors or misinterprations of the data and references are those of the author and do not represent the source's positions.
