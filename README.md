@@ -9,7 +9,7 @@ I used the [paper](https://www.acpjournals.org/doi/10.7326/0003-4819-145-5-20060
 In 2001, the Annals of Internal Medicine published a paper by Relemeier and Singh that reported that actors/actresses who won an Academy Award had higher survival rates compared to controls. However, there was a concern that immortaly time bias could have given the Academy Award winners a surivival advantage. Sylvestre and colleagues re-analyzed the data and reported that there was a strong possiblity that this immortal time bias did give the winners an advantage over the controls. 
 
 ## Motivating example
-Using data from the Sylvestre, et al study, I re-created the analyses using Stata. 
+Using data from the Sylvestre, et al study, I re-created the analyses with Stata. 
 
 # References
 Sylvestre MP, Huszti E, Hanley JA. Do OSCAR winners live longer than less successful peers? A reanalysis of the evidence. Ann Intern Med. 2006 Sep 5;145(5):361-3; discussion 392. doi: 10.7326/0003-4819-145-5-200609050-00009. PMID: 16954361.
