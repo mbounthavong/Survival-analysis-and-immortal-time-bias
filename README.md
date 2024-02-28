@@ -11,6 +11,8 @@ In 2001, the Annals of Internal Medicine published a paper by Relemeier and Sing
 ## Motivating example
 Using data from the Sylvestre, et al study, I re-created the analyses with Stata. 
 
+I cleaned the data for analysis in Stata, which can be located [here](https://github.com/mbounthavong/Survival-analysis-and-immortal-time-bias/blob/main/Data/data1.csv).
+
 # References
 Sylvestre MP, Huszti E, Hanley JA. Do OSCAR winners live longer than less successful peers? A reanalysis of the evidence. Ann Intern Med. 2006 Sep 5;145(5):361-3; discussion 392. doi: 10.7326/0003-4819-145-5-200609050-00009. PMID: 16954361.
 
