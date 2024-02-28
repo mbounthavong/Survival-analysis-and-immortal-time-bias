@@ -1,4 +1,4 @@
-# Survival-analysis-and-immortal-time-bias
+# Survival analysis and immortal time bias
 This GitHub page contains materials for a [tutorial on RPubs](https://rpubs.com/mbounthavong/survival_immortal_time_stata) that I created on how to handle immortal time bias in survival analysis using Stata. 
 
 I also included the [R Markdown code](https://github.com/mbounthavong/Survival-analysis-and-immortal-time-bias/blob/main/R%20Markdown%20code/immortal_bias_stata.Rmd) that was used to create the RPubs tutorial.
