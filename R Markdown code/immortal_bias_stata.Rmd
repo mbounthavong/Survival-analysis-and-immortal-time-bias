@@ -1,0 +1,206 @@
+---
+title: "Survival analysis: Handling immortal time bias in Stata"
+author: "Mark Bounthavong"
+date: "26 February 2024"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    default_style: "light"
+    downcute_theme: "default"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo = FALSE, warning= FALSE, message = FALSE}
+library("Statamarkdown")
+library("tidyverse")
+library("knitr")
+```
+
+## Introduction
+Survival analysis allows us to examine the time to an event such as death. However, there are potential problems when the time interval between the exposure and outcome are improperly classified. One serious issue is immortal time bias where the exposure for one group requires them to be "alive" long enough to receive the treatment thereby giving them an advantage in terms of longer time at risk. For a succinct summary of immortal time bias, I recommend reading [Samy Suissa's excellent paper](https://academic.oup.com/aje/article/167/4/492/233064). Figure 1 illustrates the immortal time bias where the index date is set at the time of enrollment, but the group classificaiton occurs afterwards when the subject receive the treatment. 
+
+```{r, echo = FALSE, fig.cap = "Figure 1. Immortal time bias."}
+knitr::include_graphics("Figure1.png")
+```
+
+Notice the time interval between enrollment and treatment; the subject must remain alive long enough to receive treatment. In survival analysis, this time interval may be improperly included as part of the "exposure" time or "at-risk" time, which can provide the treatment group with an advantage over the control group. 
+
+To address immortal time bias, it will be necessary to change the index date from the time of enrollment to the time when the subject receives the treatment. However, this would also mean that the time between enrollment to treatment receipt will somehow need to be accounted for. 
+
+## Time-varying covariate
+To address potential immortal time bias, it is recommended that the analysis includes a time-varying predictor. This is where the main predictor of interest (e.g., treatment receipt) is a function of time. Hence, when the subject is enrolled and does not receive treatment, they are considered part of the no-treatment (control) group. Once they receive the treatment, then the subject will be coded as the treatment group at that specific point in time. Figure 2 illustrates this concept. 
+
+```{r, echo = FALSE, fig.cap = "Figure 2. Time-varying predictor; period before the treatment is considered part of the unexposed group."}
+knitr::include_graphics("Figure2.png")
+```
+
+To create a time-varying predictor, you will need to get the data into the long format and create an variable where the treatment exposure is a function of time. Figure 3 illustrates the time-varying variable where the subject received the treatment at `time = 4`. 
+
+```{r, echo = FALSE, fig.cap = "Figure 3. Time-varying predictor; subject received treatment at `time = 4`."}
+knitr::include_graphics("Figure3.png")
+```
+
+Once you have the time-varying covariate, you can use this grouping variable (that is a function of time) in your survival model. 
+
+## Motivating Example: Academy Award Winners versus Control - A study on survival
+In 2021, a [retrospective cohort study by Redelmeier and Singh](https://www.acpjournals.org/doi/10.7326/0003-4819-134-10-200105150-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed) that was publised in the Annals of Internal Medicine, investigated the differences in survival between actors/actresses who won and did not win an Academy Award. They concluded that actors/actress who won an Academy Award had a significantly greater survival compared to those who did not. This sparked some interesting discussion about the link between status and winning the Academy Award. So much so that Sylvestre and colleagues requested data from the original authors to redo the study. (Note: Sylvestre and colleagues report was published in 2022 in the Annals of Internal Medicine [link](https://www.acpjournals.org/doi/10.7326/0003-4819-145-5-200609050-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed).)
+
+Sylvestre and colleagues were concerned with immortal time bias and sought to redo the analysis with this in mind. The only difference was the dataset. Redelmeier and Singh performed their analysis will data up until 2020. However, the data they provided to Sylvertre, et al, contained data up to 2021, which may result in values that are not exact with that of the orignal publications. However, Sylvestre and colleagues were able to replicate many of the original findings and adding some adjustments to address the immortal time bias in the original study. 
+
+Figure 4 is an excerpt from Sylvestre and colleagues findings where they compared their results with those of the original paper. Notice that the new data yieled a non-significant reduction in mortarlity when the time-varying predictor is applied. 
+
+```{r, echo = FALSE, fig.cap = "Figure 4. Comparison of Proportional Hazards models between the old and new data."}
+knitr::include_graphics("Figure4.png")
+```
+
+We will recreate the results by Sylvestre and colleague using data they received from the original authors in Stata. 
+
+### Step 1: Import the data
+I saved the data on my [GitHub site](https://github.com/mbounthavong/Survival-analysis-and-immortal-time-bias/tree/main), which you can importt using the `Stata` `import` command. 
+
+```{stata, results = 'hide', collectcode = TRUE}
+import delimited "https://raw.githubusercontent.com/mbounthavong/Survival-analysis-and-immortal-time-bias/main/Data/data1.csv"
+```
+
+
+### Step 2: Prepare the data
+Then, we will need to apply our inclusion criteria. We only want to compare the Winners to those who did not win the Academy Award. Therefore, we will drop the actors/actress who received a nomination but did not win an award. 
+
+```{stata, echo = TRUE, results = 'hide', cleanlog = FALSE, collectcode = TRUE}
+// Drop nominees that didn't win (Choose this option to make the comparison between winners and controls)
+drop if noms >= 1 & wins == 0
+```
+
+### Step 3: Transform data to long format
+In order to generate the time-varying exposure term, we will need to change the data from wide to long format. 
+
+I used the following code, which I modified from the [Stata FAQ blog](https://www.stata.com/support/faqs/statistics/estimate-cox-model/). 
+
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+// Generate a repeated measures file (This will allow for time-varying predictor [e.g., group])
+expand time /* expands the time to include all missing value between start and end */
+sort pid /* sort by patient identifier */
+qui by pid: gen t = _n /* populate the values for the time "t" */
+gen outcome = 0 /* create an outcome variable */
+qui by pid: replace outcome = death if _n == _N /* indicator for the end point */
+```
+
+### Step 4: Perform the survival analysis without a time-varying predictor
+Once we have the data set up in the long format, we can perform the survival analysis. 
+
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+****************************************************
+// Analysis for the Winners v. Controls:
+****************************************************
+*** STSET
+stset t, failure(outcome) id(pid)
+```
+
+After setting data data for survival analysis, we can generate the Kaplan-Meier curves for the Winners and Controls. 
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+// Survival analysis (without the time-varying group predictor)
+*** KM curve and life expectency (without the time-varying group predictor)
+sts graph, by(group) legend(label(1 "Controls") label(2 "Winners")) risktable(, order(1 "Controls" 2 "Winners")) /* kaplan meier curve */
+quietly graph export kaplan1.svg, replace /* save graphic */
+```
+
+```{r, echo = FALSE, fig.cap = "Figure 5. Kaplain-Meier curves (without time-varying predictor)."}
+knitr::include_graphics("kaplan1.svg")
+```
+
+We can also get the restricted mean survival time (e.g., life expectancy) for each group. There are two ways to do this. The first involves using the `stci` command with the `rmeans` option. This is not very accurate from my experience, and it doesn't give you the statistical comparisons between the two life expectancies Hence, I prefer to use the `strmst2` command. The `strmst2` command will provide a more accurate life expectancy and the statistical comparisons between the groups. The life expectancy for the Winners is 79.66 years and for the Controls is 75.96 years. The difference is 3.69 years, which is statistically significant (P = 0.03). This is close to the value that Sylvestre and colleagues reported in their re-analysis of the original paper (see Figure 4). 
+
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+stci, rmean by(group)  /* Estimate the restricted mean survival time using rmean */
+strmst2 group /* Estimate the restricted mean survival time using strmst2 package */
+```
+
+We can perform the log-rank test, which is statistically significant (P = 0.004). 
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+*** Log-rank test
+sts test group, logrank detail
+```
+
+Lastly, we construct the Cox Proportional Hazard model and compare our findings with those of Sylvestre and colleagues. In our results, the hazard ratio is 0.74 with a 95% confidence interval of 0.60 and 0.92. This translates to a mortality reduction of 26% (95% CI: 8% and 40%). This is exactly the same values that Sylvestre and colleagues reported in their paper (see Figure 4). 
+
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+*** Cox PH model
+stcox group
+```
+
+### Step 5: Perform the survival analysis with a time-varying predictor
+Now, we can perform the survival analysis using the time-varying predictor. In our data, we created a time-varying group variable called `group_win`. 
+
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+// Generate the time-varying predictor
+gen group_win = .
+	replace group_win = 0 if t < firstwin
+	replace group_win = 1 if t >= firstwin 
+tab group_win, m 
+```
+
+Once we have this time-varying grouping variable, we can repeat the exercises above but with the `group_win` instead of the `group` variable. Essentially, we just replace the `group` variable with the `group_win` variable. 
+
+We can compare the Kaplan-Meier curves for the Winners and Controls using the time-varying predictor. 
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+// Survival analysis (with time-varying group predictor)
+*** KM curve and life expectency (with the time-varying group predictor)
+sts graph, by(group_win) legend(label(1 "Controls") label(2 "Winners")) risktable(, order(1 "Controls" 2 "Winners")) /* kaplan meier curve */
+quietly graph export kaplan2.svg, replace /* save graphic */
+```
+
+```{r, echo = FALSE, fig.cap = "Figure 6. Kaplain-Meier curves (with time-varying predictor)."}
+knitr::include_graphics("kaplan2.svg")
+```
+
+The life expectancy of the Winners and Controls are 78.77 and 76.31 years, respectively. This is not statistically significant (P = 0.056). 
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+stci, rmean by(group_win)  /* Estimate the restricted mean survival time using rmean */
+strmst2 group_win /* Estimate the restricted mean survival time using strmst2 package */
+```
+
+The log-rank test is not statistically significant (P = 0.07). 
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+*** Log-rank test
+sts test group_win, logrank detail
+```
+
+Lastly, we construct the Cox Proportional Hazard model and compare our findings with those of Sylvestre and colleagues. In our results, the hazard ratio is 0.82 with a 95% confidence interval of 0.67 and 1.02. This translates to a mortality reduction of 18% (95% CI: -2% and 3%). This is almost the same values that Sylvestre and colleagues reported in their paper (see Figure 4). The point estimate is off by 1%-point, but I believe this could be due to a rounding error.
+
+Unlike the original paper, the reduction in mortality rate is not statistically significant when the grouping variable is time-varying. This indicates that immortal time bias may have resulted in a false positive or type I error. 
+
+```{stata, echo = TRUE, cleanlog = FALSE, collectcode = TRUE}
+*** Cox PH model
+stcox group_win
+```
+
+Here is a comparison of our tutorial findings with those of Redelmeier & Singh and Sylvertre and colleagues. 
+
+```{r, echo = FALSE, out.width="110%", fig.cap = "Figure 7. Comparison of mortality reduction between the analyses."}
+knitr::include_graphics("Figure7.png")
+```
+
+## Conclusions
+Address immortal time bias in surival analysis is possible with a time-varying predictor. In this tutorial, we review how the immortal time bias can impact the association between Academy Award Winners and Controls. With the time-varying predictor, the association is non-significant due to the amount of "immortal time" the subject in the Winners group is allowed. However, when we assign this time interval to the Control group, the differences in mortality rates is attentuated. 
+
+
+## Acknowledgement
+Redelmeier and Singh's study is avaialble at the Annals of Internal Medicine [link](https://www.acpjournals.org/doi/10.7326/0003-4819-134-10-200105150-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed).
+
+In 2020, they redid this analysis with updated data and published their findings in Plos One [link](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0266563).
+
+Sylvestre and colleagues re-did the 2001 analysis by requesting the data from the original authors in 2022. [link](https://www.acpjournals.org/doi/10.7326/0003-4819-145-5-200609050-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed). The data from Sylvestre and colleagues were used for this tutorial. 
+
+William Gould from StataCorp wrote a Stata Blog on creating a time-varying covariate for use in a survival analysis, which was incredibly helpful [link](https://www.stata.com/support/faqs/statistics/estimate-cox-model/). 
+
+
+## Disclosures and Disclaimers
+This is a work in progress, and I will likely update this as I learn more efficient methods to produce 95% CI around average values. 
+
+This is for educational purposes only.
+
+The Github code and data for this R Markdown tutorial is located [here](https://github.com/mbounthavong/Survival-analysis-and-immortal-time-bias/tree/main).
