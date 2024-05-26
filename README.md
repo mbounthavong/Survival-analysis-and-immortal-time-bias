@@ -3,7 +3,7 @@ This GitHub page contains materials for a [tutorial on RPubs](https://rpubs.com/
 
 I also included the [R Markdown code](https://github.com/mbounthavong/Survival-analysis-and-immortal-time-bias/blob/main/R%20Markdown%20code/immortal_bias_stata.Rmd) that was used to create the RPubs tutorial.
 
-I used the [paper](https://www.acpjournals.org/doi/10.7326/0003-4819-145-5-200609050-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed) by Sylvestre and colleauges as a motivating example. They re-analyzed results from a 2001 [paper](https://www.acpjournals.org/doi/10.7326/0003-4819-134-10-200105150-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed) by Redelmeier and Singh. 
+I used the [paper](https://www.acpjournals.org/doi/10.7326/0003-4819-145-5-200609050-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed) by Sylvestre and colleagues as a motivating example. They re-analyzed results from a 2001 [paper](https://www.acpjournals.org/doi/10.7326/0003-4819-134-10-200105150-00009?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed) by Redelmeier and Singh. 
 
 ## Background
 In 2001, the Annals of Internal Medicine published a paper by Relemeier and Singh that reported that actors/actresses who won an Academy Award had higher survival rates compared to controls. However, there was a concern that immortaly time bias could have given the Academy Award winners a surivival advantage. Sylvestre and colleagues re-analyzed the data and reported that there was a strong possiblity that this immortal time bias did give the winners an advantage over the controls. 
